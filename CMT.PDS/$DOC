@@ -10,6 +10,7 @@ Function:  An ISPF Edit Macro that simplifies the entry of comment lines
                 CLIST
                 COBOL
                 DOC
+                HTML
                 JCL
                 REXX
                 SAS
@@ -31,10 +32,7 @@ Warranty:   None.  Use at your own risk.
             this works in your environment.
 
 Author:    Lionel B. Dyck
-           Kaiser Permanente Information Technology
-           Walnut Creek, CA 94598
-           (925) 926-5332
-           Internet: lionel.b.dyck@kp.org
+           E-Mail:  lbdyck@gmail.com
 
 Additions: Bill George
            Internet: billgeo@bigfoot.com

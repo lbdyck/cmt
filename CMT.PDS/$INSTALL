@@ -2,4 +2,4 @@ To install:
 
 1) Copy member CMT into your SYSEXEC or SYSPROC library as member
    REXXDOC or CMT
-
+2) then use a ISPF Edit command

@@ -10,6 +10,7 @@
                 CLIST
                 COBOL
                 DOC
+                HTML
                 JCL
                 REXX
                 SAS
@@ -36,7 +37,7 @@
 # Additions: Bill George
            billgeo@bigfoot.com
 
-# Thanks:    To Doug Nadel for sharing his LINEMAC ISPF Edit Macro which
+# Thanks:  To Doug Nadel for sharing his LINEMAC ISPF Edit Macro which
            we have included within the CMT exec.
 
            Linemac Notes:
