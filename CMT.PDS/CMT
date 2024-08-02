@@ -1,6 +1,6 @@
 /* --------------------  rexx procedure  ------------------------- *
- * Name:      CMT                         Version 3.2    07/03/07  */
-                                          vernbr="3.2"
+ * Name:      CMT                         Version 3.7    08/02/24  */
+                                          vernbr="3.7"
 /*                                                                 *
  * Function:  Create a documentation 'box' within the object       *
  *            being edited. The syntax of the comment box          *
@@ -46,15 +46,27 @@
  *            user defined line commands.                          *
  *                                                                 *
  * Author:    Lionel B. Dyck                                       *
- *            Kaiser Permanente Information Technology             *
- *            Walnut Creek, CA 94598                               *
- *            (925) 926-5332                                       *
- *            Internet: lionel.b.dyck@kp.org                       *
+ *            Internet: lbdyck@gmail.com                           *
  *                                                                 *
  * Additions: Bill George                                          *
  *            Internet: billgeo@bigfoot.com                        *
  *                                                                 *
  * History:                                                        *
+ *            08/02/24 - Remove temp edit label (cleanup)          *
+ *            Ver 3.7    Lionel B. Dyck                            *
+ *                                                                 *
+ *            07/17/24 - Add type HTML                             *
+ *            Ver 3.6    Lionel B. Dyck                            *
+ *                                                                 *
+ *            09/16/16 - Change REXX comment char to |             *
+ *            Ver 3.5    Lionel B. Dyck                            *
+ *                                                                 *
+ *            06/14/16 - Add Comment support for Shell Scripts     *
+ *            Ver 3.4    Lionel B. Dyck                            *
+ *                                                                 *
+ *            09/09/13 - Add Comment support for ISPF Skeletons    *
+ *            Ver 3.3    Lionel B. Dyck                            *
+ *                                                                 *
  *            06/20/07 - Expand width of comments thanks to        *
  *            Ver 3.2    Bill Lambert                              *
  *                                                                 *
@@ -155,6 +167,7 @@
   * Init Some Variables  *
   * -------------------- */
   Parse Value "" with null cmt_suf indent boxsize ddname
+  cmt_last = "*"
   valid_box_values = "F S V"
   Panels_Created = 0
   x_rc = 0
@@ -308,12 +321,14 @@
   * ----------------------------------------- */
   Call do_box last_line
 
-
 Exit_Macro:
 
  "locate .sav"
+  /* ------- *
+   | test it |
+   * ------- */
  "(dest) = linenum .ZCSR"
- "reset label" top-1 top+1
+ "reset label .sav .sav"
  "cursor = (holdrow,holdcol)"               /* restore cursor postn */
  /* ------------------------------------- *
   * Deallocate panel's temporary library. *
@@ -480,7 +495,6 @@ Process_Via_Panel:
 
 Return
 
-
 /*===========================================================*
 * Routine: Do_Line:                                          *
 * This routine sets up the comment line between * and        *
@@ -490,12 +504,11 @@ Do_Line:
 
   Parse Arg data
   if data = "." then data = " "
-  data = indent_spc || cmt_chars Left(data,boxlen) "*"cmt_suf
+  data = indent_spc || cmt_chars Left(data,boxlen) cmt_last""cmt_suf
  "Line_After" dest "= (data)"
   dest = dest + 1
 
 Return
-
 
 /*===========================================================*
 * Routine: Do_Box:                                           *
@@ -504,10 +517,10 @@ Return
 *===========================================================*/
 Do_Box:
   Parse Arg data
+  if length(data) = 0 then return
  "Line_After" dest "= (data)"
   dest = dest + 1
 Return
-
 
 /*===========================================================*
 * Routine: Determine_Object_Type:                            *
@@ -525,7 +538,9 @@ Determine_Object_Type:
  '(line1) = LINE 1'
   Upper Line1
   Select
+     When Left(line1,2) = '<-'       then mbr_type = 'HTML'
      When Left(line1,2) = '//'       then mbr_type = 'JCL'
+     When Left(line1,1) = '#'        then mbr_type = 'SHELL'
      When Wordpos('REXX',line1) > 0  then mbr_type = 'REXX'
      Otherwise Nop
   end
@@ -556,6 +571,18 @@ Determine_Object_Type:
  "Find first ')ATTR '"
   if rc = 0 then do
      mbr_type = 'PANEL'
+     Signal Type_Exit
+  end
+
+ "Find first '<html'"
+  if rc = 0 then do
+     mbr_type = 'HTML'
+     Signal Type_Exit
+  end
+
+ "Find first '<body'"
+  if rc = 0 then do
+     mbr_type = 'HTML'
      Signal Type_Exit
   end
 
@@ -643,6 +670,33 @@ Determine_Object_Type:
      Signal Type_Exit
   end
 
+/* --------------------------- *
+ * Test for ISPF Skeleton Type *
+ * --------------------------- */
+ "Find first ')CM'"
+ if rc = 0 then do
+    mbr_type = "SKEL"
+     Signal Type_Exit
+     end
+
+ "Find first ')DO'"
+ if rc = 0 then do
+    mbr_type = "SKEL"
+     Signal Type_Exit
+     end
+
+ "Find first ')I'"
+ if rc = 0 then do
+    mbr_type = "SKEL"
+     Signal Type_Exit
+     end
+
+ "Find first ')SE'"
+ if rc = 0 then do
+    mbr_type = "SKEL"
+     Signal Type_Exit
+     end
+
 /* --------------------------------------------------------- *
  * Test for SAS Language Type                                *
  * --------------------------------------------------------- */
@@ -688,8 +742,10 @@ Determine_Object_Type:
   if Pos('CNTL',dsname)  > 0  then mbr_type = 'JCL'
   if Pos('EXEC',dsname)  > 0  then mbr_type = 'REXX'
   if Pos('REXX',dsname)  > 0  then mbr_type = 'REXX'
+  if Pos('HTML',dsname)  > 0  then mbr_type = 'HTML'
   if Pos('SAS',dsname)   > 0  then mbr_type = 'SAS'
-  if Pos('PLI',dsname)   > 0  then mbr_type = 'PLI'       /* Ge150606 */
+  if Pos('PLI',dsname)   > 0  then mbr_type = 'PLI'   /* Ge150606 */
+  if Pos('SKEL',dsname)  > 0  then mbr_type = 'SKEL'
   if mbr_type \= null then Signal Type_Exit
 
  /* -------------------- *
@@ -790,13 +846,40 @@ Setup_Member_Type_Parameters:
           first_line = indent_spc||cmt_chars dash_line "*"
           last_line  = indent_spc||cmt_chars dash_line "*"
           end
+     When mbr_type = 'HTML'  then do
+          cmt_chars  = null
+          cmt_last   = null
+          cmt_suf    = "-->"
+          indent_spc = "<!--"
+          first_line = null
+          last_line  = null
+          end
+     When mbr_type = 'SKEL'  then do
+         /* ---------------------------------- *
+          * Setup special indent for SKEL type *
+          * ---------------------------------- */
+          cmt_chars  = "*"
+          cmt_chars  = null
+          indent_spc = ")CM *"
+          first_line = indent_spc||cmt_chars dash_line "*"
+          last_line  = indent_spc||cmt_chars dash_line "*"
+          end
      When mbr_type = 'REXX',
         | mbr_type = 'C'     then do
-          cmt_chars  = " *"
+          cmt_chars  = " |"
+          cmt_last   = "|"
           indent_spc = Left(null,indent)
           first_line = indent_spc"/*" dash_line "*"
           last_line  = indent_spc" *" dash_line "*/"
           end
+     When mbr_type = 'SHELL' then do                    /* lbd */
+          cmt_chars  = "# "                             /* lbd */
+          cmt_suf    = "#"                              /* lbd */
+          cmt_last   = ""                               /* lbd */
+          indent_spc = Left(null,indent)                /* lbd */
+          first_line = indent_spc"# " dash_line "#"     /* lbd */
+          last_line  = indent_spc"# " dash_line "#"     /* lbd */
+          end                                           /* lbd */
      When mbr_type = 'SAS' then do
           cmt_chars  = "*"
           cmt_suf    = ";"
@@ -825,11 +908,7 @@ Setup_Member_Type_Parameters:
           end
   end
 
-/* ------------------------------------------------------------ *
- *                                                              *
- * ------------------------------------------------------------ */
 Return
-
 
 /*=========================================================*
  * Routine: Set_CMT_Defaults                               *
@@ -963,7 +1042,6 @@ Set_CMT_Default:
 
 Return
 
-
 /*========================================================*
  * Routine: Arrange_Parameters                            *
  *    Arrange parameters into indent,boxsize,text order,  *
@@ -1041,7 +1119,6 @@ Arrange_Parameters:
 
 Return
 
-
 /*=============================================================*
  * Retrieve defaults for INDENT, BOXSIZE & CHARBOX  parameters *
  *=============================================================*/
@@ -1054,7 +1131,6 @@ Get_Default_Values:
   if CmtdfFix = null then CmtdfFix = 65
 
 Return
-
 
 /*==========================*
  * Display HELP information *
@@ -1069,7 +1145,6 @@ Get_Help:
  "Rempop"
 
 Return
-
 
 /* ========================================================= *
  * Function: Create_Panels                                   *
@@ -1116,16 +1191,15 @@ Create_Panels:
 
 Return
 
-
 Create_Main_Panel:
   NEWSTACK
   mbname = "cmtpanel"
 
 Queue ")Attr Default(%+{)                                           "
 Queue " @ type(input) intens(high) caps(off) just(asis) color(white)",
-      "    pad('_')"
+      "    hilite(uscore)"
 Queue " _ type(input) intens(high) caps(on)  just(asis) color(white)",
-      "    pad('_')"
+      "    hilite(uscore)"
 Queue " $ type(output) intens(high) just(asis ) color(turq)             "
 Queue " ~ type(text)   intens(high) caps(off) just(asis ) color(blue)   "
 Queue " + type(text)   intens(low ) skip(on)                            "
@@ -1149,12 +1223,12 @@ Queue "  .cursor= mbrtype                                               "
 Queue "  .help = cmthelpp                                               "
 Queue "  &setdflt = 'N'                                                 "
 Queue ")Proc                                                            "
-Queue " ver (&mbrtype,LIST,'ASM','C','CLIST','COBOL','JCL',             "
-Queue "  'PANEL','REXX','DOC','SAS','PLI')                /* Ge150606 */"
-Queue " ver (&boxsize,LIST,'C','F','S','V')                             "
-Queue " ver (&cmtdfFix,RANGE,1,65)                                         "
-Queue " ver (&setdflt,LIST,'Y','N')                                     "
-Queue ")End                                                             "
+Queue " ver (&mbrtype,LIST,'ASM','C','CLIST','COBOL','JCL',       "
+Queue "  'PANEL','REXX','DOC','HTML','SAS','PLI','SKEL','SHELL') "
+Queue " ver (&boxsize,LIST,'C','F','S','V')                "
+Queue " ver (&cmtdfFix,RANGE,1,65)                         "
+Queue " ver (&setdflt,LIST,'Y','N')                        "
+Queue ")End                                                "
 Queue ""
 
   Call Write_Panel_Member
@@ -1234,7 +1308,6 @@ Queue ""
   Call Write_Panel_Member
 
 Return
-
 
 Write_Panel_Member:
 
